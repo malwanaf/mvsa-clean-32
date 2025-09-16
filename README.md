@@ -3,23 +3,24 @@
 1. Clone the repo
 ```
 git clone https://github.com/malwanaf/mvsa-clean.git
+cd mvsa-clean
 ```
 2. Create a virtual environment
 ```
-uv venv (using uv)
-.venv/bin/activate
-.venv/Scripts/activate (windows)
+mvsa-clean $ uv venv (using uv)
+mvsa-clean $ source .venv/bin/activate
+mvsa-clean $ .venv/Scripts/activate (windows)
 ```
 3. Install platformio
 ```
-uv pip install platformio
-(or) uv add platformio
+mvsa-clean $ uv pip install platformio
+(or) mvsa-clean $ uv add platformio
 ```
 4. Running the program
 ```
-(venv) mvsa-clean $ pio run -t clean
+(venv) mvsa-clean $ pio run -t clean (clean run)
 (venv) mvsa-clean $ pio run -t upload (upload directly to the connected MCU)
-(venv) mvsa-clean $  pio run -e featheresp32 (generate firmware.elf for ESP32)
+(venv) mvsa-clean $ pio run -e featheresp32 (generate firmware.elf for ESP32)
 ```
 5. Using custom model
 ```
