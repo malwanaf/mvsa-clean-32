@@ -1,14 +1,10 @@
-
-#ifndef TEST_DATA_HAR_H_
-#define TEST_DATA_HAR_H_
+#ifndef TEST_DATA_H_
+#define TEST_DATA_H_
 
 #include <stdint.h>
 
-#define NUM_TEST_DATA 10
 #define TEST_DATA_SAMPLE_LENGTH 561
+extern const float test_data_sample[];
+extern const uint8_t test_data_actual_label;
 
-extern const uint8_t test_data_sample[];
-extern const uint8_t test_data_actual[];
-extern const int32_t test_data_class_score[];
-
-#endif
+#endif // TEST_DATA_H_
