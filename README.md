@@ -12,11 +12,16 @@ uv venv (using uv)
 uv pip install platformio
 (or) uv add platformio
 ```
-4. Using custom model
+4. Running the program
+```
+(venv) mvsa-clean $ pio run -t clean
+(venv) mvsa-clean $ pio run -t upload (upload directly to the connected MCU)
+(venv) mvsa-clean $  pio run -e featheresp32 (generate firmware.elf for ESP32)
+```
+5. Using custom model
 ```
 change the model.c and model.h in /src
 change or remove the test_data.c and test_data.h if needed
-
 change the user_main.c as intented
 change the microvsa_config.h as needed
 ```
