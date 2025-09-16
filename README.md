@@ -1,6 +1,9 @@
 ## Setup
 
 1. Clone the repo
+```
+git clone https://github.com/malwanaf/mvsa-clean.git
+```
 2. Create a virtual environment
 ```
 uv venv (using uv)
