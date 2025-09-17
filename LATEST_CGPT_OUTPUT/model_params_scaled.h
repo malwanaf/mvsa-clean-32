@@ -1,6 +1,8 @@
 #ifndef MODEL_PARAMS_SCALED_H_
 #define MODEL_PARAMS_SCALED_H_
+
 #include <stdint.h>
+
 #define FIXED_POINT_SCALE_FACTOR 4096
 
 const int32_t min_val_scaled[561] = {

@@ -1,27 +1,41 @@
-#ifndef INC_LDC_INFERENCE_H_
-#define INC_LDC_INFERENCE_H_
+#ifndef MICROVSA_H_
+#define MICROVSA_H_
 
 #include <stdint.h>
+#include "model.h"          // ambil definisi MICROVSA_MODEL_DTYPE, hv_dim, dll
 #include "microvsa_config.h"
 
-#if defined(MICROVSA_IMPL_UNROLL) && !defined(MICROVSA_IMPL_FIX_SIZE)
-#define MICROVSA_IMPL_FIX_SIZE
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#if MICROVSA_IMPL == MICROVSA_IMPL_VANILLA_LDC
-#define MICROVSA_MODEL_DTYPE uint8_t
-#else
-#define MICROVSA_MODEL_DTYPE MICROVSA_TMP_DTYPE
+/**
+ * Jalankan satu kali inferensi MicroVSA
+ * 
+ * @param sample            Array quantized input (panjang = num_features)
+ * @param sample_length     Jumlah fitur (harus = MICROVSA_MODEL_NUM_FEATURE)
+ * @param f                 Matrix F (feature HVs)
+ * @param v                 Matrix V (value HVs)
+ * @param c                 Matrix C (class HVs)
+ * @param num_class         Jumlah kelas
+ * @param num_feature       Jumlah fitur
+ * @param fhv_dim_word      Dimensi hypervector dalam word
+ * @param fhv_dim_bit       Dimensi hypervector dalam bit
+ * @return                  Index kelas hasil prediksi
+ */
+uint8_t microvsa_run_single_inference(
+      const uint8_t* __restrict__ sample,
+      uint16_t sample_length,
+      const MICROVSA_MODEL_DTYPE* __restrict__ f,
+      const MICROVSA_MODEL_DTYPE* __restrict__ v,
+      const MICROVSA_MODEL_DTYPE* __restrict__ c,
+      uint16_t num_class,
+      uint16_t num_feature,
+      uint16_t fhv_dim_word,
+      uint16_t fhv_dim_bit);
+
+#ifdef __cplusplus
+}
 #endif
 
-uint8_t microvsa_run_single_inference(const uint8_t in[], const uint16_t in_length
-#ifndef MICROVSA_IMPL_FIX_SIZE
-		, const MICROVSA_MODEL_DTYPE* __restrict__ f, const MICROVSA_MODEL_DTYPE* __restrict__ v, const MICROVSA_MODEL_DTYPE* __restrict__ c
-		, uint8_t num_class, uint16_t num_feature, uint8_t fhv_dim_word, uint8_t fhv_dim_bit
-#endif
-#ifdef MICROVSA_IMPL_DEBUG_P
-        , MICROVSA_ACC_DTYPE* debugP
-#endif
-);
-
-#endif /* INC_LDC_INFERENCE_H_ */
+#endif // MICROVSA_H_

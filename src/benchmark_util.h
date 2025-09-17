@@ -8,6 +8,9 @@ extern "C" {
 #include <stdint.h>
 #include "microvsa_config.h"
 
+
+typedef uint64_t TIMER_COUNTER_DTYPE; // <-- Tambahkan ini
+
 /* Timer */
     
 void timer_initialize();
