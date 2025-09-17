@@ -162,3 +162,158 @@ pio run -e featheresp32
 4.  **Reproducibility:** Menggunakan file konfigurasi memastikan bahwa setiap eksperimen dapat direproduksi dengan tepat hanya dengan menggunakan file `config` yang sama.
 
 Dengan mengadopsi struktur ini, proyek Anda akan jauh lebih siap untuk dikembangkan lebih lanjut, baik untuk mencoba dataset baru, arsitektur model yang berbeda, maupun target perangkat keras yang beragam.
+
+
+# Alur Kerja Aplikasi Inferensi Real-Time untuk MicroVSA
+
+Dokumen ini menjelaskan langkah-langkah dan konsep untuk mengubah bukti-konsep (proof-of-concept) inferensi tunggal menjadi aplikasi *Human Activity Recognition* (HAR) yang berjalan secara real-time, terus-menerus memproses data dari sensor pada mikrokontroler.
+
+---
+
+### Konsep Dasar: Dari Inferensi Tunggal ke Loop Real-Time
+
+Aplikasi real-time tidak lagi menggunakan sampel data statis yang disimpan di `test_data.c`. Sebaliknya, ia beroperasi dalam sebuah **loop tak terbatas** yang secara kontinu menjalankan siklus berikut:
+
+1.  **Akuisisi Data:** Mengumpulkan data mentah dari sensor (misalnya, akselerometer dan giroskop) secara berkelanjutan.
+2.  **Windowing/Buffering:** Menyimpan data sensor dalam sebuah *buffer* hingga jumlah data yang cukup terkumpul untuk membentuk satu "jendela" (window) analisis.
+3.  **Ekstraksi Fitur:** Mengubah data sensor mentah dari *window* tersebut menjadi vektor fitur numerik yang dapat dipahami oleh model. **Ini adalah langkah paling krusial yang perlu diimplementasikan.**
+4.  **Preprocessing & Inferensi:** Melakukan normalisasi dan kuantisasi pada vektor fitur, lalu menjalankannya melalui model MicroVSA untuk mendapatkan prediksi aktivitas.
+5.  **Aksi/Output:** Menampilkan hasil prediksi (misalnya, mencetak ke Serial Monitor, menampilkan di LCD) atau memicu aksi lain berdasarkan hasil tersebut.
+
+!(https://i.imgur.com/9yI4eUj.png)
+
+---
+
+### 🧠 Langkah Kritis: Implementasi Ekstraksi Fitur
+
+Sangat penting untuk dipahami bahwa model yang dilatih di notebook **tidak** menggunakan data sensor mentah (seperti nilai akselerasi X, Y, Z) secara langsung. Model ini dilatih menggunakan **561 fitur** yang telah dihitung sebelumnya dari data mentah tersebut.
+
+* **Tugas Utama Anda:** Anda perlu menulis kode dalam C/C++ untuk menghitung ke-561 fitur ini pada mikrokontroler Anda.
+* **Sumber Referensi:** Deskripsi lengkap tentang bagaimana setiap fitur dihitung dapat ditemukan dalam file `features_info.txt` yang ada di dalam dataset UCI HAR asli. Fitur-fitur ini mencakup berbagai perhitungan statistik dan sinyal, seperti:
+    * Rata-rata (mean), standar deviasi, median.
+    * *Fast Fourier Transform* (FFT) untuk analisis domain frekuensi.
+    * Dan banyak lainnya.
+
+Saat ini, bagian ekstraksi fitur ini **belum ada** di dalam kode C yang disediakan dan harus dibuat dari awal agar aplikasi real-time dapat berfungsi.
+
+---
+
+### 💻 Struktur Kode yang Diusulkan untuk Aplikasi Real-Time
+
+Berikut adalah contoh kerangka kode (pseudocode) untuk implementasi pada platform yang menggunakan `setup()` dan `loop()` seperti Arduino atau ESP-IDF.
+
+#### **1. Deklarasi Global dan Buffer**
+
+```c
+#include "microvsa.h"
+#include <Arduino.h> // atau header spesifik platform lainnya
+// #include "YourIMUSensorLibrary.h" // Library untuk sensor Anda
+
+// --- Konfigurasi Sensor & Buffering ---
+const int WINDOW_SIZE = 128; // Jumlah sampel data mentah per window (sesuaikan dengan dataset UCI HAR)
+int sample_count = 0;
+// Buffer untuk 6-axis (AccX, AccY, AccZ, GyroX, GyroY, GyroZ)
+float sensor_buffer[WINDOW_SIZE][6];
+
+// --- Vektor Fitur & Sampel Terkuantisasi ---
+// Vektor untuk menampung hasil ekstraksi fitur (561 fitur)
+float feature_vector[MICROVSA_MODEL_NUM_FEATURE];
+uint8_t quantized_sample[MICROVSA_MODEL_NUM_FEATURE];
+
+// Label aktivitas untuk mempermudah pembacaan output
+const char* activity_labels[MICROVSA_MODEL_NUM_CLASS] = {
+    "WALKING", "WALKING_UPSTAIRS", "WALKING_DOWNSTAIRS",
+    "SITTING", "STANDING", "LAYING"
+};
+
+// Deklarasi fungsi helper yang perlu Anda implementasikan
+void extract_features(float buffer[WINDOW_SIZE][6], float out_features[]);
+```
+
+#### **2. Fungsi `setup()`**
+
+Fungsi ini berjalan sekali saat perangkat dinyalakan untuk melakukan inisialisasi.
+
+```c
+void setup() {
+    Serial.begin(115200);
+    // Inisialisasi sensor IMU Anda (misalnya MPU-6050)
+    // initialize_sensor();
+    Serial.println("Sistem HAR Real-time Siap.");
+}
+```
+
+#### **3. Fungsi `loop()` Utama**
+
+Fungsi ini berjalan terus-menerus setelah `setup()` selesai.
+
+```c
+void loop() {
+    // 1. Akuisisi Data Sensor
+    // Baca data terbaru dari sensor IMU Anda
+    float ax, ay, az, gx, gy, gz;
+    // read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz); // Ganti dengan fungsi dari library sensor Anda
+
+    // 2. Simpan ke Buffer (Windowing)
+    sensor_buffer[sample_count][0] = ax;
+    sensor_buffer[sample_count][1] = ay;
+    sensor_buffer[sample_count][2] = az;
+    sensor_buffer[sample_count][3] = gx;
+    sensor_buffer[sample_count][4] = gy;
+    sensor_buffer[sample_count][5] = gz;
+    sample_count++;
+
+    // 3. Jika Buffer Penuh, Lakukan Inferensi
+    if (sample_count >= WINDOW_SIZE) {
+        // Langkah 3a: Ekstraksi Fitur (FUNGSI INI HARUS ANDA BUAT)
+        // Fungsi ini akan memproses 'sensor_buffer' dan mengisi 'feature_vector'
+        extract_features(sensor_buffer, feature_vector);
+
+        // Langkah 3b: Preprocessing & Kuantisasi (logika dari user_main.c)
+        for (int i = 0; i < MICROVSA_MODEL_NUM_FEATURE; i++) {
+            // Salin dan adaptasi logika normalisasi dan kuantisasi dari user_main.c
+            // untuk setiap elemen di 'feature_vector' dan simpan hasilnya di 'quantized_sample'
+            int32_t raw_scaled = (int32_t)(feature_vector[i] * FIXED_POINT_SCALE_FACTOR);
+            int32_t temp = raw_scaled - min_val_scaled[i];
+            int64_t norm_64 = (int64_t)temp * inv_range_val_scaled[i];
+            int32_t norm_scaled = (int32_t)(norm_64 >> 12);
+            int32_t quantized_value = (norm_scaled * (MICROVSA_MODEL_NUM_QUANT - 1) + (FIXED_POINT_SCALE_FACTOR / 2)) >> 12;
+
+            if (quantized_value < 0) quantized_sample[i] = 0;
+            else if (quantized_value >= MICROVSA_MODEL_NUM_QUANT) quantized_sample[i] = MICROVSA_MODEL_NUM_QUANT - 1;
+            else quantized_sample[i] = (uint8_t)quantized_value;
+        }
+
+        // Langkah 3c: Jalankan Inferensi MicroVSA
+        uint8_t result_index = microvsa_run_single_inference(
+            quantized_sample, MICROVSA_MODEL_NUM_FEATURE,
+            MICROVSA_MODEL_F, MICROVSA_MODEL_V, MICROVSA_MODEL_C,
+            MICROVSA_MODEL_NUM_CLASS, MICROVSA_MODEL_NUM_FEATURE,
+            MICROVSA_MODEL_FHV_DIMENSION_WORD, MICROVSA_MODEL_FHV_DIMENSION_BIT
+        );
+
+        // Langkah 3d: Tampilkan Hasil
+        Serial.print("Aktivitas Terdeteksi: ");
+        Serial.println(activity_labels[result_index]);
+
+        // Langkah 3e: Reset Buffer untuk memulai window berikutnya
+        // (Opsional: Anda bisa menggunakan overlapping window dengan memindahkan data lama)
+        sample_count = 0;
+    }
+
+    // Beri jeda singkat agar sesuai dengan frekuensi sampling (misal, 50Hz)
+    delay(20);
+}
+```
+
+---
+
+### **🔌 Kebutuhan Perangkat Keras**
+
+Untuk membangun aplikasi ini, Anda akan memerlukan:
+
+* **Mikrokontroler:** **ESP32** adalah pilihan yang sangat baik karena memiliki CPU dual-core yang cepat dan memori yang cukup. Platform lain seperti Arduino Nano 33 BLE Sense (dengan IMU terintegrasi) juga bisa digunakan.
+* **Sensor:** Sebuah **Inertial Measurement Unit (IMU)** 6-axis, seperti **MPU-6050** atau **LSM6DS3**, untuk mendapatkan data akselerometer (3-axis) dan giroskop (3-axis).
+* **Perangkat Tambahan:** Kabel jumper dan breadboard untuk menghubungkan sensor ke mikrokontroler jika tidak terintegrasi.
+
+Dengan mengikuti panduan ini, Anda dapat mengembangkan proyek Anda dari sebuah validasi model menjadi aplikasi cerdas yang mampu mengenali aktivitas manusia secara terus-menerus di dunia nyata.
