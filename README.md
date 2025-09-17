@@ -12,14 +12,12 @@ Alur kerja ini menggunakan **Python** dengan **PyTorch** untuk melatih model dan
 .
 ├── notebooks/
 │   └── NEWCGPT_WORK_CLEAN.ipynb      # Notebook utama untuk training & ekspor
-├── pio_project/                    # Contoh proyek PlatformIO
-│   ├── include/
-│   ├── lib/
-│   └── src/                          # Tempat menaruh kode C yang dihasilkan
-│       ├── microvsa.c
-│       ├── microvsa.h
-│       └── user_main.c
-└── README.md                       # Dokumentasi ini
+├──  src/                          
+│    ├── microvsa.c
+│    ├── microvsa.h
+│    ├── user_main.c
+│    └── ...
+└── README.md                       
 ```
 
 ---
@@ -30,13 +28,12 @@ Alur kerja saat ini berpusat pada satu notebook Jupyter yang menangani semua lan
 
 ### **Langkah 1: Persiapan & Kebutuhan**
 
-1.  **Instal Dependensi Python:**
+1.  **Instal Dependensi Python: Menggunakan UV**
     ```bash
-    pip install numpy torch jupyter
+    mvsa-clean-32 $ uv venv (membuat virtual env)
+    mvsa-clean-32 $ .venv/Scripts/activate (windows)
+    mvsa-clean-32 $ uv pip install platformio (atau) uv add platformio
     ```
-2.  **Siapkan Proyek Mikrokontroler:**
-    * Buat proyek baru menggunakan [PlatformIO](https://platformio.org/) untuk target perangkat keras Anda (misalnya, ESP32).
-    * Salin file `microvsa.c`, `microvsa.h`, `user_main.c`, `user_main.h` dan file pendukung lainnya ke dalam direktori `src/` proyek PlatformIO Anda.
 
 ### **Langkah 2: Latih Model & Hasilkan Kode C**
 
@@ -64,7 +61,9 @@ Semua proses ini dilakukan di dalam `notebooks/NEWCGPT_WORK_CLEAN.ipynb`.
 2.  **Kompilasi dan Unggah:** Dari dalam direktori proyek PlatformIO Anda, jalankan perintah:
     ```bash
     # Ganti 'featheresp32' dengan lingkungan target Anda
-    pio run -e featheresp32 --target upload --monitor
+    microvsa-clean-32 $ pio run -e featheresp32 --target upload --monitor
+    microvsa-clean-32 $ pio run -e featheresp32 -t clean (clean run)
+    microvsa-clean-32 $ pio run -e featheresp32 (upload firmware manual)
     ```
 3.  **Lihat Hasilnya:** Buka monitor serial untuk melihat output inferensi, termasuk prediksi, label sebenarnya, dan runtime dalam siklus CPU.
 
